@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { criarPaciente } from "@/services/pacienteService";
+import { useState, useEffect } from "react";
+import {
+  criarPaciente,
+  getPacientePorId,
+  atualizarPaciente,
+} from "@/services/pacienteService";
 import Input from "@/components/Input";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  getMedicamentosPorPaciente,
+  criarMedicamento,
+} from "@/services/medicamentoService";
+import type { Medicamento } from "@/types/Medicamento";
 
 export default function PacientesPage() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+  const router = useRouter();
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -15,9 +27,42 @@ export default function PacientesPage() {
     altura: "",
     especialista: 1,
   });
+  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+
+  useEffect(() => {
+    if (id) {
+      carregarDadosPaciente(id);
+    }
+  }, [id]);
+
+  const carregarDadosPaciente = async (pacienteId: string) => {
+    try {
+      setLoading(true);
+      const paciente = await getPacientePorId(Number(pacienteId));
+      const medicamentos = await getMedicamentosPorPaciente(Number(pacienteId));
+
+      console.log("Dados do paciente:", paciente);
+      console.log("Medicamentos recebidos:", medicamentos);
+
+      setFormData({
+        nome: paciente.nome,
+        email: paciente.email,
+        cpf: paciente.cpf.toString(),
+        data_nascimento: paciente.data_nascimento.split("T")[0],
+        peso: paciente.peso.toString(),
+        altura: paciente.altura.toString(),
+        especialista: paciente.especialista,
+      });
+      setMedicamentos(medicamentos);
+    } catch (error) {
+      setError("Erro ao carregar dados do paciente");
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -36,10 +81,9 @@ export default function PacientesPage() {
     }
 
     setLoading(true);
-    setError("");
 
     try {
-      await criarPaciente({
+      const pacienteData = {
         nome: formData.nome,
         email: formData.email,
         cpf: Number(formData.cpf),
@@ -47,20 +91,47 @@ export default function PacientesPage() {
         peso: Number(formData.peso),
         altura: Number(formData.altura),
         especialista: Number(formData.especialista),
-      });
+      };
 
+      if (id) {
+        // Para atualização, envie o ID separadamente
+        await atualizarPaciente(Number(id), pacienteData);
+      } else {
+        // Para criação, envie apenas os dados sem o ID
+        await criarPaciente(pacienteData);
+      }
       router.push("/dashboard/especialista");
     } catch (error) {
-      setError("Erro ao criar paciente");
-      console.error("Erro detalhado:", error);
+      setError(id ? "Erro ao atualizar paciente" : "Erro ao criar paciente");
+      console.log(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleAddMedicamento = async (
+    medicamentoData: Omit<Medicamento, "id" | "paciente" | "especialista">
+  ) => {
+    if (!id) return;
+
+    try {
+      await criarMedicamento({
+        ...medicamentoData,
+        paciente: Number(id),
+        especialista: Number(formData.especialista),
+      });
+      carregarDadosPaciente(id.toString());
+    } catch (error) {
+      setError("Erro ao adicionar medicamento");
+      console.error(error);
+    }
+  };
+
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Cadastro de Pacientes</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        {id ? `Editar Paciente (ID: ${id})` : "Cadastrar Paciente"}{" "}
+      </h1>
 
       <form onSubmit={handleSubmit} className="mb-8 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,9 +194,79 @@ export default function PacientesPage() {
             loading ? "opacity-50" : ""
           }`}
         >
-          {loading ? "Salvando..." : "Cadastrar Paciente"}
+          {id ? "Atualizar Paciente" : "Cadastrar Paciente"}
         </button>
       </form>
+
+      {id && (
+        <div className="mt-12">
+          <h2 className="text-xl font-bold mb-4">Medicamentos</h2>
+
+          {/* Lista de medicamentos existentes */}
+          {medicamentos.length > 0 ? (
+            <div className="space-y-2">
+              {medicamentos.map((med) => (
+                <div key={med.id} className="p-4 border rounded">
+                  <h3 className="font-bold">{med.nome}</h3>
+                  <p>Intervalo: {med.intervalo}</p>
+                  <p>Quantidade: {med.quantidade}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>Nenhum medicamento cadastrado.</p>
+          )}
+
+          {/* Formulário para novo medicamento */}
+          <div className="mt-6 p-4 border rounded">
+            <h3 className="font-medium mb-3">Adicionar Medicamento</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                handleAddMedicamento({
+                  nome: form.nome.value,
+                  intervalo: form.intervalo.value,
+                  quantidade: Number(form.quantidade.value),
+                  data_inicio: form.data_inicio.value,
+                  data_fim: form.data_fim.value,
+                });
+                form.reset();
+              }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input name="nome" label="Nome" required />
+                <Input name="intervalo" label="Intervalo (HH:MM)" required />
+                <Input
+                  name="quantidade"
+                  label="Quantidade"
+                  type="number"
+                  step="0.1"
+                  required
+                />
+                <Input
+                  name="data_inicio"
+                  label="Data Início"
+                  type="datetime-local"
+                  required
+                />
+                <Input
+                  name="data_fim"
+                  label="Data Fim"
+                  type="datetime-local"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-4 py-2 rounded mt-4"
+              >
+                Adicionar Medicamento
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

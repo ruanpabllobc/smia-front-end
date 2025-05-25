@@ -8,3 +8,5 @@ export interface Paciente {
   altura: number;
   especialista: number
 }
+
+export type NovoPaciente = Omit<Paciente, 'id'>;  // Tipo específico para criação

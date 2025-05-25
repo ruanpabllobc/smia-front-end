@@ -11,16 +11,16 @@ export const getPacientePorId = async (id: number): Promise<Paciente> => {
   return response.data;
 };
 
-export const criarPaciente = async (dados: Paciente) => {
-  const response = await api.post('/pacientes', dados);
+export const criarPaciente = async (dados: Omit<Paciente, 'id'>): Promise<Paciente> => {
+  const response = await api.post<Paciente>('/pacientes', dados);
   return response.data;
 };
 
 export const atualizarPaciente = async (
   id: number,
-  dados: Partial<Paciente>
+  dados: Omit<Paciente, 'id'>  // Garante que todos os campos necessários estão presentes
 ): Promise<Paciente> => {
-  const response = await api.put(`/pacientes/${id}`, dados);
+  const response = await api.put<Paciente>(`/pacientes/${id}`, dados);
   return response.data;
 };
 

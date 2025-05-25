@@ -51,15 +51,26 @@ export default function DashboardEspecialistaPage() {
           <ul className="space-y-2">
             {pacientes.map((paciente) => (
               <li key={paciente.id} className="p-4 border rounded">
-                <p>
-                  <strong>Nome:</strong> {paciente.nome}
-                </p>
-                <p>
-                  <strong>Email:</strong> {paciente.email}
-                </p>
-                <p>
-                  <strong>CPF:</strong> {paciente.cpf}
-                </p>
+                <div>
+                  <p>
+                    <strong>Nome:</strong> {paciente.nome}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {paciente.email}
+                  </p>
+                  <p>
+                    <strong>CPF:</strong> {paciente.cpf}
+                  </p>
+                </div>
+                <Link
+                  href={{
+                    pathname: "/dashboard/especialista/create-paciente",
+                    query: { id: paciente.id },
+                  }}
+                  className="bg-blue-600 text-white py-1 px-3 rounded hover:bg-blue-700"
+                >
+                  Editar
+                </Link>
               </li>
             ))}
           </ul>
