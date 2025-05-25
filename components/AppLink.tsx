@@ -4,17 +4,21 @@ import Link, { LinkProps } from "next/link";
 interface AppLinkProps extends LinkProps {
   children: React.ReactNode;
   variant?: "default" | "outline" | "danger";
+  size?: "default" | "small";
+  width?: "full" | "fit";
   className?: string;
 }
 
 const AppLink: React.FC<AppLinkProps> = ({
   children,
   variant = "default",
+  size = "default",
+  width = "full",
   className = "",
   ...props
 }) => {
   const baseStyles =
-    "inline-block text-center font-medium py-3 px-6 rounded-full transition-colors duration-200";
+    "inline-block text-center font-medium rounded-full transition-colors duration-200";
 
   const variantStyles = {
     default: "bg-green-700 hover:bg-green-800 text-white",
@@ -22,9 +26,19 @@ const AppLink: React.FC<AppLinkProps> = ({
     danger: "bg-red-600 hover:bg-red-700 text-white",
   };
 
+  const sizeStyles = {
+    default: "py-3 px-6",
+    small: "py-2 px-4 text-sm",
+  };
+
+  const widthStyles = {
+    full: "w-full",
+    fit: "w-fit",
+  };
+
   return (
     <Link
-      className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${widthStyles[width]} ${className}`}
       {...props}
     >
       {children}

@@ -13,6 +13,7 @@ import {
   criarMedicamento,
 } from "@/services/medicamentoService";
 import type { Medicamento } from "@/types/Medicamento";
+import Button from "@/components/Button";
 
 export default function PacientesPage() {
   const searchParams = useSearchParams();
@@ -110,6 +111,7 @@ export default function PacientesPage() {
       };
 
       if (id) {
+        console.log("Dados sendo enviados:", pacienteData);
         await atualizarPaciente(Number(id), pacienteData);
       } else {
         await criarPaciente(pacienteData);
@@ -279,12 +281,7 @@ export default function PacientesPage() {
                   required
                 />
               </div>
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded mt-4"
-              >
-                Adicionar Medicamento
-              </button>
+              <Button type="submit">Adicionar Medicamento</Button>
             </form>
           </div>
         </div>

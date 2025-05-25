@@ -2,9 +2,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getTodosPacientes } from "@/services/pacienteService";
+import { getTodosPacientes, deletarPaciente } from "@/services/pacienteService";
 import type { Paciente } from "@/types/Paciente";
 import Link from "next/link";
+import Button from "@/components/Button";
+import AppLink from "@/components/AppLink";
 
 export default function DashboardEspecialistaPage() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -22,6 +24,27 @@ export default function DashboardEspecialistaPage() {
       setPacientes(data);
     } catch (error) {
       setError("Erro ao carregar pacientes");
+      console.error("Erro detalhado:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletarPaciente = async (id: number) => {
+    // Confirmação antes de deletar
+    const confirmacao = window.confirm(
+      "Tem certeza que deseja deletar este paciente? Esta ação não pode ser desfeita."
+    );
+
+    if (!confirmacao) return;
+
+    try {
+      setLoading(true);
+      await deletarPaciente(id);
+      // Atualiza a lista após deletar
+      await carregarPacientes();
+    } catch (error) {
+      setError("Erro ao deletar paciente");
       console.error("Erro detalhado:", error);
     } finally {
       setLoading(false);
@@ -50,7 +73,10 @@ export default function DashboardEspecialistaPage() {
         ) : (
           <ul className="space-y-2">
             {pacientes.map((paciente) => (
-              <li key={paciente.id} className="p-4 border rounded">
+              <li
+                key={paciente.id}
+                className="p-4 bg-gray-100 rounded-xl flex justify-between items-center"
+              >
                 <div>
                   <p>
                     <strong>Nome:</strong> {paciente.nome}
@@ -58,19 +84,28 @@ export default function DashboardEspecialistaPage() {
                   <p>
                     <strong>Email:</strong> {paciente.email}
                   </p>
-                  <p>
-                    <strong>CPF:</strong> {paciente.cpf}
-                  </p>
                 </div>
-                <Link
-                  href={{
-                    pathname: "/dashboard/especialista/create-paciente",
-                    query: { id: paciente.id },
-                  }}
-                  className="bg-blue-600 text-white py-1 px-3 rounded hover:bg-blue-700"
-                >
-                  Editar
-                </Link>
+                <div className="flex gap-2 items-center">
+                  <AppLink
+                    href={{
+                      pathname: "/dashboard/especialista/create-paciente",
+                      query: { id: paciente.id },
+                    }}
+                    size="small"
+                    width="fit"
+                  >
+                    Editar
+                  </AppLink>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="small"
+                    width="fit"
+                    onClick={() => handleDeletarPaciente(Number(paciente.id))}
+                  >
+                    Deletar
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
