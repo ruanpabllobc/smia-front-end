@@ -32,33 +32,49 @@ export default function PacientesPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    console.log("ID recebido:", id);
     if (id) {
+      console.log("Iniciando carregamento do paciente...");
       carregarDadosPaciente(id);
+    } else {
+      console.log("Nenhum ID fornecido - modo de criação");
     }
   }, [id]);
 
   const carregarDadosPaciente = async (pacienteId: string) => {
     try {
       setLoading(true);
-      const paciente = await getPacientePorId(Number(pacienteId));
-      const medicamentos = await getMedicamentosPorPaciente(Number(pacienteId));
+      setError("");
 
+      const paciente = await getPacientePorId(Number(pacienteId));
       console.log("Dados do paciente:", paciente);
-      console.log("Medicamentos recebidos:", medicamentos);
 
       setFormData({
-        nome: paciente.nome,
-        email: paciente.email,
-        cpf: paciente.cpf.toString(),
-        data_nascimento: paciente.data_nascimento.split("T")[0],
-        peso: paciente.peso.toString(),
-        altura: paciente.altura.toString(),
-        especialista: paciente.especialista,
+        nome: paciente.nome || "",
+        email: paciente.email || "",
+        cpf: paciente.cpf?.toString() || "",
+        data_nascimento: paciente.data_nascimento?.split("T")[0] || "",
+        peso: paciente.peso?.toString() || "",
+        altura: paciente.altura?.toString() || "",
+        especialista: paciente.especialista || 1,
       });
-      setMedicamentos(medicamentos);
-    } catch (error) {
+
+      try {
+        const medicamentos = await getMedicamentosPorPaciente(
+          Number(pacienteId)
+        );
+        console.log("Medicamentos:", medicamentos);
+        setMedicamentos(medicamentos);
+      } catch (medError) {
+        console.error("Erro específico nos medicamentos:", medError);
+        setMedicamentos([]);
+        setError(
+          "Medicamentos não puderam ser carregados, mas o paciente está disponível"
+        );
+      }
+    } catch (pacienteError) {
+      console.error("Erro ao carregar paciente:", pacienteError);
       setError("Erro ao carregar dados do paciente");
-      console.log(error);
     } finally {
       setLoading(false);
     }
@@ -94,10 +110,8 @@ export default function PacientesPage() {
       };
 
       if (id) {
-        // Para atualização, envie o ID separadamente
         await atualizarPaciente(Number(id), pacienteData);
       } else {
-        // Para criação, envie apenas os dados sem o ID
         await criarPaciente(pacienteData);
       }
       router.push("/dashboard/especialista");
@@ -198,11 +212,20 @@ export default function PacientesPage() {
         </button>
       </form>
 
+      {loading && (
+        <div className="p-4 bg-blue-50 text-blue-700 rounded mb-4">
+          {!medicamentos.length
+            ? "Carregando dados do paciente..."
+            : "Carregando medicamentos..."}
+        </div>
+      )}
+
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+
       {id && (
         <div className="mt-12">
           <h2 className="text-xl font-bold mb-4">Medicamentos</h2>
 
-          {/* Lista de medicamentos existentes */}
           {medicamentos.length > 0 ? (
             <div className="space-y-2">
               {medicamentos.map((med) => (
@@ -217,7 +240,6 @@ export default function PacientesPage() {
             <p>Nenhum medicamento cadastrado.</p>
           )}
 
-          {/* Formulário para novo medicamento */}
           <div className="mt-6 p-4 border rounded">
             <h3 className="font-medium mb-3">Adicionar Medicamento</h3>
             <form
