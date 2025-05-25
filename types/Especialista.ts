@@ -3,5 +3,5 @@ export interface Especialista {
   nome: string;
   crm: number;
   email: string;
-  senha?: string;
+  senha?: string
 }

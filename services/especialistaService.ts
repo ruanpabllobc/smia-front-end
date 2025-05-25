@@ -25,24 +25,3 @@ export const deletarEspecialista = async (id: number) => {
   const response = await api.delete(`/especialistas/${id}`);
   return response.data;
 };
-
-export const verificarCredenciais = async (email: string, senha: string): Promise<Especialista | null> => {
-  try {
-    const lista = await api.get<Especialista[]>('/especialistas');
-    const especialista = lista.data.find(esp => esp.email === email);
-    
-    if (!especialista) return null;
-
-    const completo = await api.get<Especialista & { senha: string }>(`/especialistas/${especialista.id}`);
-    
-    if (completo.data.senha === senha) {
-      const { senha: _, ...dadosSeguros } = completo.data;
-      return dadosSeguros;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Erro ao verificar:', error);
-    return null;
-  }
-};
