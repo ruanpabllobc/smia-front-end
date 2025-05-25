@@ -19,7 +19,8 @@ export interface CreateLembreteDto {
 }
 
 export interface UpdateLembreteDto {
-  data_hora?: string;
-  status?: boolean;
-  medicamento_id?: number;
+  data_hora: string;
+  status: boolean;
+  medicamento_id: number;
+  paciente_id: number;
 }

@@ -59,25 +59,33 @@ export default function CreateLembretePage() {
     async (lembreteId: string) => {
       try {
         setLoading(true);
+        setError("");
+
         const lembrete = await getLembretePorId(Number(lembreteId));
 
-        setFormData({
-          data_hora: lembrete.data_hora,
-          medicamento_id: lembrete.medicamento.id,
-          paciente_id: lembrete.paciente.id,
-        });
-
-        if (!paciente) {
-          await carregarDadosPaciente(lembrete.paciente.id.toString());
+        if (!lembrete) {
+          throw new Error("Lembrete não encontrado");
         }
+
+        const pacienteIdFromLembrete =
+          lembrete.paciente?.id || searchParams.get("pacienteId") || 0;
+        const medicamentoId = lembrete.medicamento?.id || 0;
+
+        await carregarDadosPaciente(pacienteIdFromLembrete.toString());
+
+        setFormData({
+          data_hora: lembrete.data_hora.replace(" ", "T").slice(0, 16),
+          medicamento_id: Number(medicamentoId),
+          paciente_id: Number(pacienteIdFromLembrete),
+        });
       } catch (error) {
-        setError("Erro ao carregar lembrete");
-        console.error(error);
+        setError("Erro ao carregar dados do lembrete");
+        console.error("Detalhes do erro:", error);
       } finally {
         setLoading(false);
       }
     },
-    [paciente, carregarDadosPaciente]
+    [searchParams, carregarDadosPaciente]
   );
 
   useEffect(() => {
@@ -103,30 +111,24 @@ export default function CreateLembretePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (
-      !formData.data_hora ||
-      !formData.medicamento_id ||
-      !formData.paciente_id
-    ) {
-      setError("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
+    const payload = {
+      ...formData,
+      data_hora: formData.data_hora.replace("T", " ") + ":00",
+      medicamento_id: Number(formData.medicamento_id), // Mantém os nomes originais
+      paciente_id: Number(formData.paciente_id),
+    };
 
     try {
       if (id) {
-        await atualizarLembrete(Number(id), formData as UpdateLembreteDto);
+        console.log("Payload de atualização:", payload);
+        await atualizarLembrete(Number(id), payload as UpdateLembreteDto);
       } else {
-        await criarLembrete(formData);
+        await criarLembrete(payload);
       }
-      router.push(
-        `/dashboard/especialista/paciente?id=${formData.paciente_id}`
-      );
+      router.push(`/dashboard/especialista`);
     } catch (error) {
       setError(id ? "Erro ao atualizar lembrete" : "Erro ao criar lembrete");
-      console.error(error);
+      console.error("Erro detalhado:", error); // Melhore a mensagem de erro
     } finally {
       setLoading(false);
     }
@@ -202,15 +204,20 @@ export default function CreateLembretePage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() =>
-                router.push(
-                  `/dashboard/especialista/paciente?id=${formData.paciente_id}`
-                )
-              }
+              onClick={() => router.push(`/dashboard/especialista`)}
             >
               Cancelar
             </Button>
           </div>
+          {loading && <p>Carregando dados do lembrete...</p>}
+
+          {!loading && id && formData.medicamento_id === 0 && (
+            <div className="bg-blue-50 p-4 rounded mb-4">
+              <p className="text-blue-700">
+                Lembrete carregado parcialmente. Você pode editar manualmente.
+              </p>
+            </div>
+          )}
         </form>
       </div>
     </div>
