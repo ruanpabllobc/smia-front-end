@@ -17,6 +17,11 @@ import {
 import type { Medicamento } from "@/types/Medicamento";
 import Button from "@/components/Button";
 import HoverableCard from "@/components/HoverableCard";
+import {
+  getLembretesPorPaciente,
+  deletarLembrete,
+} from "@/services/lembreteService";
+import type { Lembrete } from "@/types/Lembrete";
 
 export default function PacientesPage() {
   const searchParams = useSearchParams();
@@ -37,6 +42,10 @@ export default function PacientesPage() {
   const [excluindoId, setExcluindoId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lembretes, setLembretes] = useState<Lembrete[]>([]);
+  const [excluindoLembreteId, setExcluindoLembreteId] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     console.log("ID recebido:", id);
@@ -67,6 +76,14 @@ export default function PacientesPage() {
       });
 
       try {
+        const lembretesData = await getLembretesPorPaciente(Number(pacienteId));
+        setLembretes(lembretesData);
+      } catch (lembreteError) {
+        console.error("Erro ao carregar lembretes:", lembreteError);
+        setLembretes([]);
+      }
+
+      try {
         const medicamentos = await getMedicamentosPorPaciente(
           Number(pacienteId)
         );
@@ -84,6 +101,24 @@ export default function PacientesPage() {
       setError("Erro ao carregar dados do paciente");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddMedicamento = async (
+    medicamentoData: Omit<Medicamento, "id" | "paciente" | "especialista">
+  ) => {
+    if (!id) return;
+
+    try {
+      await criarMedicamento({
+        ...medicamentoData,
+        paciente: Number(id),
+        especialista: Number(formData.especialista),
+      });
+      carregarDadosPaciente(id.toString());
+    } catch (error) {
+      setError("Erro ao adicionar medicamento");
+      console.error(error);
     }
   };
 
@@ -170,21 +205,20 @@ export default function PacientesPage() {
     }
   };
 
-  const handleAddMedicamento = async (
-    medicamentoData: Omit<Medicamento, "id" | "paciente" | "especialista">
-  ) => {
+  const handleDeletarLembrete = async (lembreteId: number) => {
     if (!id) return;
 
     try {
-      await criarMedicamento({
-        ...medicamentoData,
-        paciente: Number(id),
-        especialista: Number(formData.especialista),
-      });
-      carregarDadosPaciente(id.toString());
+      if (confirm("Tem certeza que deseja deletar este lembrete?")) {
+        setExcluindoLembreteId(lembreteId);
+        await deletarLembrete(lembreteId);
+        await carregarDadosPaciente(id.toString());
+      }
     } catch (error) {
-      setError("Erro ao adicionar medicamento");
-      console.error(error);
+      setError("Erro ao excluir lembrete");
+      console.error("Erro na exclusão:", error);
+    } finally {
+      setExcluindoLembreteId(null);
     }
   };
 
@@ -267,6 +301,86 @@ export default function PacientesPage() {
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
+        <div className="mt-6 p-6 border rounded bg-white border-gray-100">
+          <h3 className="font-medium mb-3">Adicionar Medicamento</h3>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const medicamentoData = {
+                nome: form.nome.value,
+                intervalo: form.intervalo.value,
+                quantidade: Number(form.quantidade.value),
+                data_inicio: form.data_inicio.value,
+                data_fim: form.data_fim.value,
+              };
+
+              if (medicamentoEditando) {
+                handleUpdateMedicamento(medicamentoData);
+              } else {
+                handleAddMedicamento(medicamentoData);
+              }
+              form.reset();
+            }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                name="nome"
+                label="Nome"
+                required
+                defaultValue={medicamentoEditando?.nome || ""}
+              />
+              <Input
+                name="intervalo"
+                label="Intervalo (HH:MM)"
+                required
+                defaultValue={medicamentoEditando?.intervalo || ""}
+              />
+              <Input
+                name="quantidade"
+                label="Quantidade"
+                type="number"
+                step="0.1"
+                required
+                defaultValue={medicamentoEditando?.quantidade || ""}
+              />
+              <Input
+                name="data_inicio"
+                label="Data Início"
+                type="datetime-local"
+                required
+                defaultValue={
+                  medicamentoEditando?.data_inicio?.slice(0, 16) || ""
+                }
+              />
+              <Input
+                name="data_fim"
+                label="Data Fim"
+                type="datetime-local"
+                required
+                defaultValue={medicamentoEditando?.data_fim?.slice(0, 16) || ""}
+              />
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button type="submit" width="fit">
+                {medicamentoEditando
+                  ? "Atualizar Medicamento"
+                  : "Adicionar Medicamento"}
+              </Button>
+              {medicamentoEditando && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelarEdicao}
+                  width="fit"
+                >
+                  Cancelar
+                </Button>
+              )}
+            </div>
+          </form>
+        </div>
+
         {id && (
           <div className="mt-12">
             <h2 className="text-xl font-bold mb-4">Medicamentos</h2>
@@ -314,88 +428,68 @@ export default function PacientesPage() {
             ) : (
               <p>Nenhum medicamento cadastrado.</p>
             )}
+          </div>
+        )}
 
-            <div className="mt-6 p-6 border rounded bg-white border-gray-100">
-              <h3 className="font-medium mb-3">Adicionar Medicamento</h3>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const form = e.currentTarget;
-                  const medicamentoData = {
-                    nome: form.nome.value,
-                    intervalo: form.intervalo.value,
-                    quantidade: Number(form.quantidade.value),
-                    data_inicio: form.data_inicio.value,
-                    data_fim: form.data_fim.value,
-                  };
-
-                  if (medicamentoEditando) {
-                    handleUpdateMedicamento(medicamentoData);
-                  } else {
-                    handleAddMedicamento(medicamentoData);
-                  }
-                  form.reset();
-                }}
+        {id && (
+          <div className="mt-12">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Lembretes</h2>
+              <Button
+                onClick={() =>
+                  router.push(
+                    `/dashboard/especialista/create-lembrete?pacienteId=${id}`
+                  )
+                }
+                width="fit"
+                size="small"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    name="nome"
-                    label="Nome"
-                    required
-                    defaultValue={medicamentoEditando?.nome || ""}
-                  />
-                  <Input
-                    name="intervalo"
-                    label="Intervalo (HH:MM)"
-                    required
-                    defaultValue={medicamentoEditando?.intervalo || ""}
-                  />
-                  <Input
-                    name="quantidade"
-                    label="Quantidade"
-                    type="number"
-                    step="0.1"
-                    required
-                    defaultValue={medicamentoEditando?.quantidade || ""}
-                  />
-                  <Input
-                    name="data_inicio"
-                    label="Data Início"
-                    type="datetime-local"
-                    required
-                    defaultValue={
-                      medicamentoEditando?.data_inicio?.slice(0, 16) || ""
-                    }
-                  />
-                  <Input
-                    name="data_fim"
-                    label="Data Fim"
-                    type="datetime-local"
-                    required
-                    defaultValue={
-                      medicamentoEditando?.data_fim?.slice(0, 16) || ""
-                    }
-                  />
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <Button type="submit" width="fit">
-                    {medicamentoEditando
-                      ? "Atualizar Medicamento"
-                      : "Adicionar Medicamento"}
-                  </Button>
-                  {medicamentoEditando && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCancelarEdicao}
-                      width="fit"
-                    >
-                      Cancelar
-                    </Button>
-                  )}
-                </div>
-              </form>
+                Adicionar Lembrete
+              </Button>
             </div>
+
+            {lembretes.length > 0 ? (
+              <div className="space-y-2">
+                {lembretes.map((lembrete) => (
+                  <HoverableCard key={lembrete.id}>
+                    <div>
+                      <h3 className="font-bold">{lembrete.medicamento.nome}</h3>
+                      <p>
+                        Data/Hora:{" "}
+                        {new Date(lembrete.data_hora).toLocaleString()}
+                      </p>
+                      <p>
+                        Status: {lembrete.status ? "Realizado" : "Pendente"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/especialista/create-lembrete?id=${lembrete.id}&pacienteId=${id}`
+                          )
+                        }
+                        size="small"
+                        width="fit"
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        onClick={() => handleDeletarLembrete(lembrete.id)}
+                        variant="danger"
+                        size="small"
+                        width="fit"
+                        loading={excluindoLembreteId === lembrete.id}
+                      >
+                        Excluir
+                      </Button>
+                    </div>
+                  </HoverableCard>
+                ))}
+              </div>
+            ) : (
+              <p>Nenhum lembrete cadastrado.</p>
+            )}
           </div>
         )}
       </div>

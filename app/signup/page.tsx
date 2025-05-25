@@ -128,7 +128,7 @@ export default function Home() {
               </Button>
               <p className="text-md text-gray-600 text-center">
                 Já possui uma conta?{" "}
-                <a href="#" className="text-green-700 hover:underline">
+                <a href="/signin" className="text-green-700 hover:underline">
                   Faça login
                 </a>
               </p>

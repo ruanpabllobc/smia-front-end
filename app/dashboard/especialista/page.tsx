@@ -74,24 +74,16 @@ export default function DashboardEspecialistaPage() {
             <p>Nenhum paciente cadastrado</p>
           ) : (
             <div className="space-y-4">
-              {" "}
-              {/* Aumentei o espaçamento para 4 */}
               {pacientes.map((paciente) => (
                 <HoverableCard key={paciente.id}>
                   <div className="flex justify-between items-center w-full">
                     {" "}
-                    {/* Garante alinhamento correto */}
                     <div>
                       <p className="font-medium text-gray-900">
                         {" "}
-                        {/* Texto mais destacado */}
                         {paciente.nome}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        {" "}
-                        {/* Texto secundário */}
-                        {paciente.email}
-                      </p>
+                      <p className="text-sm text-gray-600"> {paciente.email}</p>
                     </div>
                     <div className="flex gap-2">
                       <AppLink
