@@ -12,11 +12,8 @@ export const getMedicamentoPorId = async (id: number) => {
 };
 
 export const getMedicamentosPorPaciente = async (pacienteId: number) => {
-  console.log(`Chamando endpoint: /api/medicamentos?pacienteId=${pacienteId}`);
-
-const response = await api.get<Medicamento[]>(`/medicamentos`, {
-    params: { paciente: pacienteId }
-  });  return response.data;
+  const response = await api.get<Medicamento[]>(`/medicamentos/por-paciente/${pacienteId}`);
+  return response.data;
 };
 
 export const criarMedicamento = async (dados: Omit<Medicamento, 'id'>) => {
