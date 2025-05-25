@@ -4,9 +4,9 @@
 import { useState, useEffect } from "react";
 import { getTodosPacientes, deletarPaciente } from "@/services/pacienteService";
 import type { Paciente } from "@/types/Paciente";
-import Link from "next/link";
 import Button from "@/components/Button";
 import AppLink from "@/components/AppLink";
+import HoverableCard from "@/components/HoverableCard";
 
 export default function DashboardEspecialistaPage() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -52,64 +52,76 @@ export default function DashboardEspecialistaPage() {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Dashboard do Especialista</h1>
-        <Link
-          href="/dashboard/especialista/create-paciente"
-          className="bg-green-700 text-white py-2 px-4 rounded hover:bg-green-800"
-        >
-          Cadastrar Novo Paciente
-        </Link>
-      </div>
+    <div className="bg-green-50 min-h-screen">
+      <div className="p-8 max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold">Dashboard do Especialista</h1>
+          <AppLink
+            href="/dashboard/especialista/create-paciente"
+            width="fit"
+            className="bg-green-700 text-white py-2 px-4 rounded hover:bg-green-800"
+          >
+            Cadastrar Novo Paciente
+          </AppLink>
+        </div>
 
-      {loading && <p>Carregando pacientes...</p>}
-      {error && <p className="text-red-500">{error}</p>}
+        {loading && <p>Carregando pacientes...</p>}
+        {error && <p className="text-red-500">{error}</p>}
 
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Pacientes Cadastrados</h2>
-        {pacientes.length === 0 ? (
-          <p>Nenhum paciente cadastrado</p>
-        ) : (
-          <ul className="space-y-2">
-            {pacientes.map((paciente) => (
-              <li
-                key={paciente.id}
-                className="p-4 bg-gray-100 rounded-xl flex justify-between items-center"
-              >
-                <div>
-                  <p>
-                    <strong>Nome:</strong> {paciente.nome}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {paciente.email}
-                  </p>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <AppLink
-                    href={{
-                      pathname: "/dashboard/especialista/create-paciente",
-                      query: { id: paciente.id },
-                    }}
-                    size="small"
-                    width="fit"
-                  >
-                    Editar
-                  </AppLink>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="small"
-                    width="fit"
-                    onClick={() => handleDeletarPaciente(Number(paciente.id))}
-                  >
-                    Deletar
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Pacientes Cadastrados</h2>
+          {pacientes.length === 0 ? (
+            <p>Nenhum paciente cadastrado</p>
+          ) : (
+            <div className="space-y-4">
+              {" "}
+              {/* Aumentei o espaçamento para 4 */}
+              {pacientes.map((paciente) => (
+                <HoverableCard key={paciente.id}>
+                  <div className="flex justify-between items-center w-full">
+                    {" "}
+                    {/* Garante alinhamento correto */}
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {" "}
+                        {/* Texto mais destacado */}
+                        {paciente.nome}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {" "}
+                        {/* Texto secundário */}
+                        {paciente.email}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <AppLink
+                        href={{
+                          pathname: "/dashboard/especialista/create-paciente",
+                          query: { id: paciente.id },
+                        }}
+                        size="small"
+                        width="fit"
+                      >
+                        Editar
+                      </AppLink>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="small"
+                        width="fit"
+                        onClick={() =>
+                          handleDeletarPaciente(Number(paciente.id))
+                        }
+                      >
+                        Deletar
+                      </Button>
+                    </div>
+                  </div>
+                </HoverableCard>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
