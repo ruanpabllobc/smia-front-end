@@ -11,6 +11,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   getMedicamentosPorPaciente,
   criarMedicamento,
+  atualizarMedicamento,
+  deletarMedicamento,
 } from "@/services/medicamentoService";
 import type { Medicamento } from "@/types/Medicamento";
 import Button from "@/components/Button";
@@ -29,6 +31,9 @@ export default function PacientesPage() {
     especialista: 1,
   });
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
+  const [medicamentoEditando, setMedicamentoEditando] =
+    useState<Medicamento | null>(null);
+  const [excluindoId, setExcluindoId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -81,6 +86,45 @@ export default function PacientesPage() {
     }
   };
 
+  const handleUpdateMedicamento = async (
+    medicamentoData: Omit<Medicamento, "id" | "paciente" | "especialista">
+  ) => {
+    if (!id || !medicamentoEditando) return;
+
+    try {
+      await atualizarMedicamento(medicamentoEditando.id, {
+        ...medicamentoData,
+        paciente: Number(id),
+        especialista: Number(formData.especialista),
+      });
+      setMedicamentoEditando(null);
+      carregarDadosPaciente(id.toString());
+    } catch (error) {
+      setError("Erro ao atualizar medicamento");
+      console.error(error);
+    }
+  };
+
+  const handleCancelarEdicao = () => {
+    setMedicamentoEditando(null);
+  };
+
+  const handleDeletarMedicamento = async (medicamentoId: number) => {
+    if (!id) return;
+
+    try {
+      if (confirm("Tem certeza que deseja deletar este medicamento?")) {
+        setExcluindoId(medicamentoId);
+        await deletarMedicamento(medicamentoId);
+        await carregarDadosPaciente(id.toString());
+      }
+    } catch (error) {
+      setError("Erro ao excluir medicamento");
+      console.error("Erro na exclusão:", error);
+    } finally {
+      setExcluindoId(null);
+    }
+  };
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
@@ -231,10 +275,41 @@ export default function PacientesPage() {
           {medicamentos.length > 0 ? (
             <div className="space-y-2">
               {medicamentos.map((med) => (
-                <div key={med.id} className="p-4 border rounded">
-                  <h3 className="font-bold">{med.nome}</h3>
-                  <p>Intervalo: {med.intervalo}</p>
-                  <p>Quantidade: {med.quantidade}</p>
+                <div
+                  key={med.id}
+                  className="p-4 border rounded flex justify-between items-start"
+                >
+                  <div>
+                    <h3 className="font-bold">{med.nome}</h3>
+                    <p>Intervalo: {med.intervalo}</p>
+                    <p>Quantidade: {med.quantidade}</p>
+                    <p>
+                      Data Início: {new Date(med.data_inicio).toLocaleString()}
+                    </p>
+                    <p>
+                      Data Fim:{" "}
+                      {med.data_fim
+                        ? new Date(med.data_fim).toLocaleString()
+                        : "Não definido"}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setMedicamentoEditando(med)}
+                      className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                    >
+                      Editar
+                    </button>
+                    <Button
+                      onClick={() => handleDeletarMedicamento(med.id)}
+                      variant="danger"
+                      size="small"
+                      width="fit"
+                      loading={excluindoId === med.id}
+                    >
+                      Excluir
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -248,40 +323,78 @@ export default function PacientesPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const form = e.currentTarget;
-                handleAddMedicamento({
+                const medicamentoData = {
                   nome: form.nome.value,
                   intervalo: form.intervalo.value,
                   quantidade: Number(form.quantidade.value),
                   data_inicio: form.data_inicio.value,
                   data_fim: form.data_fim.value,
-                });
+                };
+
+                if (medicamentoEditando) {
+                  handleUpdateMedicamento(medicamentoData);
+                } else {
+                  handleAddMedicamento(medicamentoData);
+                }
                 form.reset();
               }}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input name="nome" label="Nome" required />
-                <Input name="intervalo" label="Intervalo (HH:MM)" required />
+                <Input
+                  name="nome"
+                  label="Nome"
+                  required
+                  defaultValue={medicamentoEditando?.nome || ""}
+                />
+                <Input
+                  name="intervalo"
+                  label="Intervalo (HH:MM)"
+                  required
+                  defaultValue={medicamentoEditando?.intervalo || ""}
+                />
                 <Input
                   name="quantidade"
                   label="Quantidade"
                   type="number"
                   step="0.1"
                   required
+                  defaultValue={medicamentoEditando?.quantidade || ""}
                 />
                 <Input
                   name="data_inicio"
                   label="Data Início"
                   type="datetime-local"
                   required
+                  defaultValue={
+                    medicamentoEditando?.data_inicio?.slice(0, 16) || ""
+                  }
                 />
                 <Input
                   name="data_fim"
                   label="Data Fim"
                   type="datetime-local"
                   required
+                  defaultValue={
+                    medicamentoEditando?.data_fim?.slice(0, 16) || ""
+                  }
                 />
               </div>
-              <Button type="submit">Adicionar Medicamento</Button>
+              <div className="flex gap-2 mt-4">
+                <Button type="submit">
+                  {medicamentoEditando
+                    ? "Atualizar Medicamento"
+                    : "Adicionar Medicamento"}
+                </Button>
+                {medicamentoEditando && (
+                  <Button
+                    type="button"
+                    onClick={handleCancelarEdicao}
+                    className="bg-gray-500 hover:bg-gray-600"
+                  >
+                    Cancelar
+                  </Button>
+                )}
+              </div>
             </form>
           </div>
         </div>
